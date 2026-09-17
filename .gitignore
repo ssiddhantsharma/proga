@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+*.egg-info/
+.venv/
+design_out/
+runs/
+*.parquet
+2*_*/
+.env

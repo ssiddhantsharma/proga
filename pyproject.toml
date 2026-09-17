@@ -1,0 +1,23 @@
+[build-system]
+requires = ["uv_build>=0.8.3,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-root = ""
+
+[project]
+name = "proga"
+version = "0.0.1"
+description = "Gradient-free genetic-algorithm binder design with a Protenix-v2 oracle (Pareto or scalar selection)."
+requires-python = ">=3.12"
+dependencies = [
+    "protenix @ git+https://github.com/bytedance/Protenix.git@c3bfc36",
+    "polars",
+    "altair",
+    "vl-convert-python",
+    "pyyaml",
+    "gemmi",
+]
+
+[project.scripts]
+proga = "proga.cli.design:main"
