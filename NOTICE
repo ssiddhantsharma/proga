@@ -1,0 +1,14 @@
+proga
+Copyright 2026 Siddhant Sharma
+
+This product includes software derived from Protenix
+(https://github.com/bytedance/Protenix), Copyright 2024 ByteDance and/or its
+affiliates, licensed under the Apache License, Version 2.0. Files derived from
+Protenix retain their original copyright headers.
+
+The genetic-algorithm design code is derived from the internal `protenix-ga`
+project and released here under the Apache License, Version 2.0.
+
+Bundled model weights (proga/weights/proteinmpnn/) are from ProteinMPNN
+(https://github.com/dauparas/ProteinMPNN), MIT License, Copyright (c) 2022
+Justas Dauparas.

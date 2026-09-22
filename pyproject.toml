@@ -1,0 +1,29 @@
+[build-system]
+requires = ["uv_build>=0.8.3,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-root = ""
+
+[project]
+name = "proga"
+version = "0.0.1"
+description = "Gradient-free genetic-algorithm binder design with pluggable structure-prediction oracles."
+requires-python = ">=3.12"
+dependencies = [
+    "torch",
+    "numpy",
+    "gemmi",
+    "pyyaml",
+    "polars",
+    "altair",
+    "vl-convert-python",
+]
+
+# The GPU/in-process Protenix-v2 oracle is optional: `pip install proga[protenix]`. Other
+# oracles (Boltz-2, OpenDDE) register against the Oracle protocol without pulling in protenix.
+[project.optional-dependencies]
+protenix = ["protenix @ git+https://github.com/bytedance/Protenix.git@c3bfc36"]
+
+[project.scripts]
+proga = "proga.cli.design:main"
