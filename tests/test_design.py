@@ -53,7 +53,7 @@ from proga.genetic import (
     _dominates,
 )
 from proga import rmsd
-from proga.oracle import ChainIndex, PredictionOutputs
+from proga.oracle_base import ChainIndex, PredictionOutputs
 from proga.scoring import Scorer, _TabsRef, build_tabs_ref, max_k, min_k
 from proga.spec import (
     BinderSpec,
