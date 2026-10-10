@@ -14,4 +14,4 @@ jobs:
       - run: python -m compileall proga
       # Card-free oracle tests. The full suite (tests/test_design.py scoring) needs the optional
       # protenix GPU extra: `pip install -e .[protenix]` on a CUDA box.
-      - run: PYTHONPATH=. pytest tests/test_ttbio_oracle.py -q
+      - run: PYTHONPATH=. pytest tests/test_ttbio_oracle.py tests/test_nesso1_oracle.py -q

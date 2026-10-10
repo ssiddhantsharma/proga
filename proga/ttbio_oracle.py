@@ -41,7 +41,7 @@ class TTBioOracle(BoltzOracle):
         dump_dir: str | None = None,
     ) -> PredictionOutputs:
         assembly_ids = [cid for cid, _ in chains]
-        run_dir = Path(dump_dir) if dump_dir else (self.work / "run")
+        run_dir = (Path(dump_dir) if dump_dir else (self.work / "run")).resolve()
         run_dir.mkdir(parents=True, exist_ok=True)
         yaml_path = run_dir / f"{name}.yaml"
         self._write_yaml(chains, yaml_path)

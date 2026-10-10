@@ -151,6 +151,8 @@ class PredictionOutputs:
     # Populated for full complexes; consumed by the ProteinMPNN score.
     backbone_coords: torch.Tensor | None = None
     sequence: str = ""
+    # Scalar binding affinity for fold-free oracles (Nesso-1); None otherwise.
+    affinity: float | None = None
 
 
 
@@ -181,6 +183,7 @@ _ORACLE_BACKENDS: dict[str, str] = {
     "boltz2": "proga.boltz_oracle:BoltzOracle",     # Boltz-2, subprocess `boltz predict` (forward-only)
     "opendde": "proga.opendde_oracle:OpenDDEOracle",# OpenDDE, GPU, in-process (shared Protenix runner)
     "ttbio": "proga.ttbio_oracle:TTBioOracle",   # tt-bio (Tenstorrent) subprocess `tt-bio predict`
+    "nesso1": "proga.nesso1_oracle:NessoAffinityOracle",  # Nesso-1 protein-ligand affinity (scalar, no fold)
 }
 
 
