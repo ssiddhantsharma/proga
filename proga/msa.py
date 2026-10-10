@@ -52,7 +52,7 @@ class MSACache:
             raise RuntimeError(
                 f"MSA search returned {len(subdirs)} subdirs for {len(missing)} sequences."
             )
-        for seq, subdir in zip(missing, subdirs):
+        for seq, subdir in zip(missing, subdirs, strict=False):
             dest = self._dir(seq)
             os.makedirs(dest, exist_ok=True)
             for fname in ("pairing.a3m", "non_pairing.a3m"):

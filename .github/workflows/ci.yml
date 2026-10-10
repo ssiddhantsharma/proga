@@ -10,7 +10,7 @@ jobs:
           python-version: "3.12"
       - run: pip install torch --index-url https://download.pytorch.org/whl/cpu
       - run: pip install numpy gemmi pyyaml pytest ruff
-      - run: ruff check --select F proga/ttbio_oracle.py tests/test_ttbio_oracle.py
+      - run: ruff check .
       - run: python -m compileall proga
       # Card-free oracle tests. The full suite (tests/test_design.py scoring) needs the optional
       # protenix GPU extra: `pip install -e .[protenix]` on a CUDA box.

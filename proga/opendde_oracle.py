@@ -25,7 +25,6 @@ import json
 import os
 import tempfile
 from pathlib import Path
-from typing import Optional
 
 import torch
 
@@ -34,7 +33,7 @@ from proga.oracle_base import ChainIndex, PredictionOutputs
 
 
 class OpenDDEOracle(BoltzOracle):
-    def __init__(self, config, work_dir: Optional[str] = None):
+    def __init__(self, config, work_dir: str | None = None):
         # NB: do NOT call BoltzOracle.__init__ (boltz CLI setup); we only inherit its parsers.
         self.config = config
         self.work = Path(work_dir or tempfile.mkdtemp(prefix="proga_opendde_"))
@@ -91,10 +90,10 @@ class OpenDDEOracle(BoltzOracle):
         self,
         chains: list[tuple[str, str]],
         roles: dict[str, str],
-        design_positions: Optional[list[int]] = None,
+        design_positions: list[int] | None = None,
         name: str = "design",
-        chain_names: Optional[dict[str, str]] = None,
-        dump_dir: Optional[str] = None,
+        chain_names: dict[str, str] | None = None,
+        dump_dir: str | None = None,
     ) -> PredictionOutputs:
         from runner.inference import infer_predict
 

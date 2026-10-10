@@ -1,6 +1,6 @@
 import random
+from collections.abc import Callable
 from dataclasses import dataclass, field, fields
-from typing import Callable
 
 from proga.complex import DesignMask
 from proga.config import DESIGN_ALPHABET, DesignConfig, ScoreWeights
@@ -57,7 +57,7 @@ def top_k(population: list[Individual], k: int) -> list[Individual]:
 def _dominates(a: tuple[float, ...], b: tuple[float, ...]) -> bool:
     """True iff ``a`` Pareto-dominates ``b`` (>= on every axis, > on at least one)."""
     better_any = False
-    for x, y in zip(a, b):
+    for x, y in zip(a, b, strict=False):
         if x < y:
             return False
         if x > y:

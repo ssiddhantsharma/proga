@@ -1,6 +1,6 @@
 import json
 from dataclasses import asdict, dataclass, field
-from typing import Optional
+from typing import Self
 
 from proga.complex import (
     DesignMask,
@@ -9,8 +9,6 @@ from proga.complex import (
     parse_design_mask,
 )
 from proga.config import DESIGN_ALPHABET, NANOBODY_SCAFFOLD
-
-from typing import Self
 
 ROLE_TARGET = "target"
 ROLE_CONTEXT = "context"
@@ -30,9 +28,9 @@ class FixedChain:
 @dataclass
 class BinderSpec:
     id: str = "A"
-    scaffold: Optional[str] = None
+    scaffold: str | None = None
     mask_char: str = "X"
-    denovo_length: Optional[int] = None
+    denovo_length: int | None = None
     alphabet: str = DESIGN_ALPHABET
     name: str = "binder"
 
@@ -79,9 +77,9 @@ class TargetSpec:
     chains: list[FixedChain]
     off_targets: list[OffTarget] = field(default_factory=list)
     msa_chain_ids: list[str] = field(default_factory=list)
-    iptm_target_id: Optional[str] = None
+    iptm_target_id: str | None = None
     discriminating_positions: list[int] = field(default_factory=list)
-    reference: Optional[ReferenceSpec] = None
+    reference: ReferenceSpec | None = None
 
     def roles(self) -> dict[str, str]:
         roles = {self.binder.id: ROLE_BINDER}
@@ -164,7 +162,7 @@ def pmhc_spec_from_cifs(
     target_cif: str,
     off_target_cif: str,
     scaffold: str = NANOBODY_SCAFFOLD,
-    mhc_avoidance_residues: Optional[list[int]] = None,
+    mhc_avoidance_residues: list[int] | None = None,
 ) -> TargetSpec:
     if mhc_avoidance_residues is None:
         mhc_avoidance_residues = list(range(182, 275))

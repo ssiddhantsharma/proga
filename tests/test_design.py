@@ -27,6 +27,7 @@ import pytest
 import torch
 import torch.nn.functional as F
 
+from proga import rmsd
 from proga.complex import (
     apply_sequence,
     build_sample_dict,
@@ -42,6 +43,8 @@ from proga.config import (
 )
 from proga.genetic import (
     GeneticOptimizer,
+    Individual,
+    _dominates,
     crossover,
     crowding_distance,
     initialize_population,
@@ -49,10 +52,7 @@ from proga.genetic import (
     non_dominated_fronts,
     pareto_select,
     top_k,
-    Individual,
-    _dominates,
 )
-from proga import rmsd
 from proga.oracle_base import ChainIndex, PredictionOutputs
 from proga.scoring import Scorer, _TabsRef, build_tabs_ref, max_k, min_k
 from proga.spec import (
@@ -223,7 +223,7 @@ def test_scalar_path_unchanged_by_default():
 
     result = GeneticOptimizer(cfg, mask).run(evaluate)
     bests = result.best_per_generation
-    assert all(b2 >= b1 for b1, b2 in zip(bests, bests[1:]))  # elitism preserved
+    assert all(b2 >= b1 for b1, b2 in zip(bests, bests[1:], strict=False))  # elitism preserved
     assert len(result.top) == 5
 
 
@@ -548,7 +548,7 @@ def test_genetic_optimizer_improves_and_dedups():
     result = opt.run(evaluate)
     # Elitism (TopK(P ∪ O)) => best fitness is monotonic non-decreasing.
     bests = result.best_per_generation
-    assert all(b2 >= b1 for b1, b2 in zip(bests, bests[1:]))
+    assert all(b2 >= b1 for b1, b2 in zip(bests, bests[1:], strict=False))
     assert len(result.top) == 5
     # Top sequences are unique.
     genomes = [ind.genome for ind in result.top]

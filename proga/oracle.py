@@ -1,12 +1,13 @@
-import hashlib
 import json
 import os
 import tempfile
-from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
 import torch
+from protenix.data.inference.infer_dataloader import InferenceDataset
+from protenix.model import sample_confidence
+from protenix.utils.logger import get_logger
+from runner.batch_inference import get_default_runner
 
 from proga.complex import (
     MHC_CHAIN_ID,
@@ -16,23 +17,21 @@ from proga.complex import (
     build_sample_dict_n,
 )
 from proga.config import DesignConfig
-from protenix.model import sample_confidence
-from protenix.utils.logger import get_logger
-from protenix.utils.torch_utils import to_device
-from runner.batch_inference import get_default_runner
-from protenix.data.inference.infer_dataloader import InferenceDataset
 
 logger = get_logger(__name__)
 
 
 from proga.oracle_base import (  # the contract now lives in a protenix-free module
-    ROLE_BINDER, ROLE_TARGET, ROLE_CONTEXT, genome_struct_name, ChainIndex,
-    PredictionOutputs, Oracle,
+    ROLE_BINDER,
+    ROLE_CONTEXT,
+    ROLE_TARGET,
+    ChainIndex,
+    PredictionOutputs,
 )
 
 
 class ProtenixOracle:
-    def __init__(self, config: DesignConfig, work_dir: Optional[str] = None):
+    def __init__(self, config: DesignConfig, work_dir: str | None = None):
 
         self.config = config
         self.runner = get_default_runner(
@@ -68,7 +67,7 @@ class ProtenixOracle:
         self.target_msa: dict[str, dict[str, str]] = {}
 
         # Capture raw distogram logits each forward pass.
-        self._captured_distogram: Optional[torch.Tensor] = None
+        self._captured_distogram: torch.Tensor | None = None
         self.runner.model.distogram_head.register_forward_hook(self._distogram_hook)
 
     # ------------------------------------------------------------- target MSA
@@ -122,10 +121,10 @@ class ProtenixOracle:
         self,
         chains: list[tuple[str, str]],
         roles: dict[str, str],
-        design_positions: Optional[list[int]] = None,
+        design_positions: list[int] | None = None,
         name: str = "design",
-        chain_names: Optional[dict[str, str]] = None,
-        dump_dir: Optional[str] = None,
+        chain_names: dict[str, str] | None = None,
+        dump_dir: str | None = None,
     ) -> PredictionOutputs:
         """Fold an arbitrary N-chain complex (binder first) and decode outputs.
 
@@ -206,7 +205,7 @@ class ProtenixOracle:
         assembly_ids: list[str],
         roles: dict[str, str],
         design_positions: list[int],
-        chain_names: Optional[dict[str, str]] = None,
+        chain_names: dict[str, str] | None = None,
         atom_array=None,
         sequence: str = "",
     ) -> PredictionOutputs:

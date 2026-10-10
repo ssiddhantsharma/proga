@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field, fields
-
-from typing import Final, Optional, Self
+from typing import Final, Self
 
 DESIGN_ALPHABET: Final[str] = "ADEFGHIKLMNPQRSTVWY"
 
@@ -189,7 +188,7 @@ class DesignConfig:
     # positions, optional within-chain index restriction, and the checkpoint.
     mpnn_score_chain: str = "target"  # "target" | "binder" | "design" | chain id
     mpnn_reduction: str = "min"  # "min" | "mean" over scored positions
-    mpnn_local_indices: Optional[list[int]] = None  # within-chain indices, e.g. discriminating positions
+    mpnn_local_indices: list[int] | None = None  # within-chain indices, e.g. discriminating positions
     mpnn_weights_name: str = "v_48_020"
 
     def num_oracle_calls(self) -> int:

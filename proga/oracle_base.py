@@ -4,10 +4,9 @@ backend can implement it without pulling in the GPU protenix stack.
 """
 import hashlib
 from dataclasses import dataclass
-from typing import Optional, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 import torch
-
 
 ROLE_BINDER = "binder"
 ROLE_TARGET = "target"
@@ -33,19 +32,19 @@ class ChainIndex:
         asym_id: torch.Tensor,
         design_tokens: torch.Tensor,
         # --- general form ---
-        chain_ids: Optional[list[str]] = None,
-        chain_tokens: Optional[dict[str, torch.Tensor]] = None,
-        chain_roles: Optional[dict[str, str]] = None,
-        chain_asym: Optional[dict[str, int]] = None,
-        binder_id: Optional[str] = None,
-        chain_names: Optional[dict[str, str]] = None,
+        chain_ids: list[str] | None = None,
+        chain_tokens: dict[str, torch.Tensor] | None = None,
+        chain_roles: dict[str, str] | None = None,
+        chain_asym: dict[str, int] | None = None,
+        binder_id: str | None = None,
+        chain_names: dict[str, str] | None = None,
         # --- legacy pMHC form ---
-        nanobody_tokens: Optional[torch.Tensor] = None,
-        peptide_tokens: Optional[torch.Tensor] = None,
-        mhc_tokens: Optional[torch.Tensor] = None,
-        nanobody_asym: Optional[int] = None,
-        peptide_asym: Optional[int] = None,
-        mhc_asym: Optional[int] = None,
+        nanobody_tokens: torch.Tensor | None = None,
+        peptide_tokens: torch.Tensor | None = None,
+        mhc_tokens: torch.Tensor | None = None,
+        nanobody_asym: int | None = None,
+        peptide_asym: int | None = None,
+        mhc_asym: int | None = None,
     ) -> None:
         self.residue_index = residue_index
         self.asym_id = asym_id
@@ -150,7 +149,7 @@ class PredictionOutputs:
     # Per-token backbone coords (N, CA, C, O), [N_token, 4, 3], NaN where an
     # atom is missing; and the per-token 1-letter sequence (length N_token).
     # Populated for full complexes; consumed by the ProteinMPNN score.
-    backbone_coords: Optional[torch.Tensor] = None
+    backbone_coords: torch.Tensor | None = None
     sequence: str = ""
 
 
@@ -167,10 +166,10 @@ class Oracle(Protocol):
         self,
         chains: list[tuple[str, str]],
         roles: dict[str, str],
-        design_positions: Optional[list[int]] = None,
+        design_positions: list[int] | None = None,
         name: str = "design",
-        chain_names: Optional[dict[str, str]] = None,
-        dump_dir: Optional[str] = None,
+        chain_names: dict[str, str] | None = None,
+        dump_dir: str | None = None,
     ) -> "PredictionOutputs":
         ...
 
@@ -191,7 +190,7 @@ def register_oracle(name: str, target: str) -> None:
     _ORACLE_BACKENDS[name] = target
 
 
-def make_oracle(name: str, config, work_dir: Optional[str] = None) -> "Oracle":
+def make_oracle(name: str, config, work_dir: str | None = None) -> "Oracle":
     import importlib
     if name not in _ORACLE_BACKENDS:
         raise ValueError(f"unknown oracle backend {name!r}; known: {sorted(_ORACLE_BACKENDS)}")

@@ -18,7 +18,6 @@ Implements the selectivity-aware design method of Pan et al. (GEM workshop,
 ICLR 2026) with Protenix as the structure-and-metrics oracle.
 """
 
-from proga.config import DesignConfig, NANOBODY_SCAFFOLD
 from proga.complex import (
     DesignMask,
     PMHCTarget,
@@ -27,6 +26,7 @@ from proga.complex import (
     load_pmhc_from_cif,
     parse_design_mask,
 )
+from proga.config import NANOBODY_SCAFFOLD, DesignConfig
 from proga.spec import (
     BinderSpec,
     FixedChain,

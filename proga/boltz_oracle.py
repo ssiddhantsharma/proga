@@ -22,7 +22,6 @@ import json
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import torch
@@ -41,7 +40,7 @@ def _seq_hash(seq: str) -> str:
 
 
 class BoltzOracle:
-    def __init__(self, config, work_dir: Optional[str] = None):
+    def __init__(self, config, work_dir: str | None = None):
         self.config = config
         self.work = Path(work_dir or tempfile.mkdtemp(prefix="proga_boltz_"))
         self.work.mkdir(parents=True, exist_ok=True)
@@ -88,10 +87,10 @@ class BoltzOracle:
         self,
         chains: list[tuple[str, str]],
         roles: dict[str, str],
-        design_positions: Optional[list[int]] = None,
+        design_positions: list[int] | None = None,
         name: str = "design",
-        chain_names: Optional[dict[str, str]] = None,
-        dump_dir: Optional[str] = None,
+        chain_names: dict[str, str] | None = None,
+        dump_dir: str | None = None,
     ) -> PredictionOutputs:
         assembly_ids = [cid for cid, _ in chains]
         run_dir = Path(dump_dir) if dump_dir else (self.work / "run")
@@ -168,7 +167,8 @@ class BoltzOracle:
         cj = next(pred_dir.glob("confidence_*.json"), None) or next(pred_dir.glob("**/confidence_*.json"), None)
         if cj is None:
             raise FileNotFoundError(f"no confidence_*.json under {pred_dir}")
-        data = json.load(open(cj))
+        with open(cj) as fh:
+            data = json.load(fh)
         iptm_global = float(data["iptm"])
         cpi = torch.zeros(n_chain, n_chain)
         pc = data.get("pair_chains_iptm") or {}

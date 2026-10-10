@@ -39,7 +39,7 @@ def matched_columns(seq_a: str, seq_b: str) -> tuple[list[int], list[int]]:
     idx_a: list[int] = []
     idx_b: list[int] = []
     ia = ib = 0
-    for ca, cb in zip(gapped_a, gapped_b):
+    for ca, cb in zip(gapped_a, gapped_b, strict=False):
         if ca != "-" and cb != "-":
             idx_a.append(ia)
             idx_b.append(ib)
@@ -63,7 +63,7 @@ def target_aligned_binder_rmsd(
         return 0.0
     transform = gemmi.superpose_positions(ref_target_ca, pred_target_ca).transform
     total = 0.0
-    for pred, ref in zip(pred_binder_ca, ref_binder_ca):
+    for pred, ref in zip(pred_binder_ca, ref_binder_ca, strict=False):
         moved = transform.apply(pred)
         total += (moved.x - ref.x) ** 2 + (moved.y - ref.y) ** 2 + (moved.z - ref.z) ** 2
     return math.sqrt(total / len(ref_binder_ca))

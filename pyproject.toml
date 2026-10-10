@@ -27,3 +27,10 @@ protenix = ["protenix @ git+https://github.com/bytedance/Protenix.git@c3bfc36"]
 
 [project.scripts]
 proga = "proga.cli.design:main"
+
+[tool.ruff]
+line-length = 100
+extend-exclude = ["proga/proteinmpnn.py"]  # vendored ProteinMPNN, kept close to upstream
+
+[tool.ruff.lint]
+select = ["F", "I", "B", "SIM", "UP"]
