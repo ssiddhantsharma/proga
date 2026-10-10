@@ -1,22 +1,14 @@
-"""tt-bio (Tenstorrent) subprocess oracle for proga.
+"""tt-bio (Tenstorrent) fold oracle for proga.
 
-Folds each genome on a Tenstorrent card via the ``tt-bio predict`` CLI and parses tt-bio's
-output back into proga's ``PredictionOutputs``. Subclasses :class:`BoltzOracle` to reuse the
-boltz-compatible YAML writer, the MSA cache and the CIF parser (pLDDT in B-factors); only the run
-command and the confidence/PAE readers are tt-bio specific.
+Runs `tt-bio predict` per candidate on a Tenstorrent card and parses its cif/pae/results.json into
+PredictionOutputs. Subclasses BoltzOracle to reuse the boltz-compatible YAML writer, MSA cache and
+CIF parser; overrides only the run command and the confidence/PAE readers. Scalar oracle, no
+gradients. tt-bio emits no distogram logits, so distogram_logits=None and contact terms are skipped.
 
-Non-differentiable scalar oracle, so it pairs with the GA / NSGA-II path, not gradients. tt-bio
-predict does not surface distogram logits, so ``distogram_logits=None`` and the contact/distogram
-scoring terms are skipped (scoring.py guards on it), the same as the other subprocess folders.
-
-Grounded against ``tt-bio predict --help`` (``--out_dir/--model/--write_pae/--output_format/
---recycling_steps/--sampling_steps/--diffusion_samples/--seed/--msa_dir/--msa_cache_only/
---single_sequence``) and the documented output layout (docs/confidence-outputs.md):
-``structures/<name>.cif`` (pLDDT in B-factors), ``structures/<name>_pae.npz['pae']`` and a
-``results.json`` carrying pTM / ipTM / chain-pair ipTM scalars.
-
-STATUS: wired to the documented CLI and outputs; the confidence reader falls back across the
-likely chain-pair ipTM key names. Validate the exact key on the first real p150a fold.
+Confidence is read from the keys tt-bio documents as stable (README, "Confidence Scores"):
+top-level `iptm`/`ptm`/`plddt`, `pair_chains_iptm[binder][target]` and `chains_ptm` on multi-chain
+Boltz-2/Protenix-v2/OpenDDE, and `status` per entry. The Boltz-2-only `interface_score_distribution`
+is not used.
 """
 import json
 import os
@@ -34,7 +26,7 @@ class TTBioOracle(BoltzOracle):
     def __init__(self, config, work_dir: str | None = None):
         super().__init__(config, work_dir=work_dir)
         self.launcher = getattr(config, "ttbio_launcher", "") or os.environ.get(
-            "TTBIO", "/home/bizon/ttbio"
+            "TTBIO", "tt-bio"
         )
         self.model = getattr(config, "ttbio_model", "boltz2")
         self.extra = list(getattr(config, "ttbio_extra_args", None) or [])
@@ -74,7 +66,9 @@ class TTBioOracle(BoltzOracle):
             pred_dir, name, assembly_ids
         )
         pae = self._parse_pae_ttbio(pred_dir, name)
-        iptm_global, chain_pair_iptm = self._parse_confidence_ttbio(run_dir, pred_dir, assembly_ids, name)
+        iptm_global, chain_pair_iptm = self._parse_confidence_ttbio(
+            run_dir, pred_dir, assembly_ids, name
+        )
 
         positions = design_positions if design_positions is not None else self.design_positions
         binder_id = assembly_ids[0]
@@ -124,7 +118,6 @@ class TTBioOracle(BoltzOracle):
         rj = (
             next(pred_dir.glob("results.json"), None)
             or next(run_dir.glob("**/results.json"), None)
-            or next(pred_dir.glob("*summary_confidences.json"), None)
         )
         if rj is None:
             raise FileNotFoundError(f"no results.json under {run_dir}")
@@ -132,19 +125,17 @@ class TTBioOracle(BoltzOracle):
             data = json.load(fh)
         recs = data if isinstance(data, list) else [data]
         rec = next((r for r in recs if r.get("id") == name), recs[0])
-        idx = {cid: k for k, cid in enumerate(assembly_ids)}
-        cpi = torch.zeros(len(assembly_ids), len(assembly_ids))
+        status = rec.get("status")
+        if status not in (None, "ok"):
+            raise RuntimeError(f"tt-bio fold status={status!r} for {name}")
+        n = len(assembly_ids)
+        cpi = torch.zeros(n, n)
+        for i, row in (rec.get("pair_chains_iptm") or {}).items():
+            for j, v in (row or {}).items():
+                if int(i) < n and int(j) < n:
+                    cpi[int(i), int(j)] = float(v)
         for k, v in (rec.get("chains_ptm") or {}).items():
-            if int(k) < len(assembly_ids):
+            if int(k) < n:
                 cpi[int(k), int(k)] = float(v)
-        pairs = (rec.get("interface_score_distribution") or {}).get("pairs", {})
-        iptms = []
-        for key, blk in pairs.items():
-            parts = key.split("-")
-            if len(parts) == 2 and parts[0] in idx and parts[1] in idx:
-                v = float((blk.get("iptm") or {}).get("mean", 0.0))
-                i, j = idx[parts[0]], idx[parts[1]]
-                cpi[i, j] = cpi[j, i] = v
-                iptms.append(v)
-        iptm_global = max(iptms) if iptms else float(rec.get("confidence_score", 0.0))
+        iptm_global = float(rec.get("iptm", rec.get("confidence_score", 0.0)))
         return iptm_global, cpi
