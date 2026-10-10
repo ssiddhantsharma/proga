@@ -45,6 +45,14 @@ class ScoreWeights:
     # binder toward the reference conformation. Inert by default (0.0); a
     # non-zero weight requires a `reference` block in the spec.
     target_aligned_binder_rmsd: float = 0.0
+    # Nesso-1 scalar affinity (fold-free oracle). Maximised with a positive weight.
+    affinity: float = 0.0
+
+    @classmethod
+    def affinity_only(cls, affinity: float = 1.0) -> Self:
+        kwargs = {f.name: 0.0 for f in fields(cls)}
+        kwargs["affinity"] = affinity
+        return cls(**kwargs)
 
     @classmethod
     def iptm_ipae(cls, target_contact: float = -0.5) -> Self:
@@ -175,6 +183,13 @@ class DesignConfig:
     ttbio_model: str = "boltz2"   # boltz2|protenix-v2|opendde-abag|rf3|af2ig
     ttbio_launcher: str = ""      # launcher path; "" -> $TTBIO or /home/bizon/ttbio
     ttbio_extra_args: list[str] = field(default_factory=list)  # extra `tt-bio predict` flags
+    # Nesso-1 protein-ligand affinity oracle (oracle_backend="nesso1"):
+    nesso1_launcher: str = ""      # launcher path; "" -> $TTBIO or tt-bio
+    nesso1_ligand_id: str = "LIG"
+    nesso1_ligand_smiles: str = ""
+    nesso1_ligand_ccd: str = ""
+    nesso1_affinity_key: str = "affinity_probability_binary"  # or affinity_pred_value
+    nesso1_extra_args: list[str] = field(default_factory=list)
     n_sample: int = 1
     dtype: str = "bf16"
     use_msa: bool = True # Only for the target

@@ -49,3 +49,24 @@ single-sequence (`--single_sequence`). Otherwise every candidate pays an MSA sea
 - Scores are comparable within one model, not across models; do not mix oracles in one run.
 - Each fold is hundreds of seconds and a GA is `population x (generations + 1) x (1 + n_off_targets)`
   folds: a throughput run, not interactive.
+
+## Protein -> ligand design (Nesso-1 affinity)
+
+`oracle_backend=nesso1` scores the GA-designed protein against a fixed small-molecule ligand with
+`tt-bio affinity --model nesso1` — a scalar, no fold (Nesso-1 is protein-ligand only). It is the one
+case where the oracle returns no structure: the scorer runs on `affinity` alone (its has-structure
+guard zeroes the structure terms). Pair it with `--objective affinity`.
+
+    proga --spec specs/example_nesso1_ligand.yaml --output_dir ./out \
+          --oracle-backend nesso1 --objective affinity \
+          --nesso1-ligand-smiles "N[C@@H](Cc1ccc(O)cc1)C(=O)O" --nesso1-ligand-id LIG \
+          --population 16 --generations 10
+
+| flag | meaning |
+|---|---|
+| `--nesso1-ligand-smiles` / `--nesso1-ligand-ccd` | the target ligand (one of the two) |
+| `--nesso1-ligand-id` | ligand chain id in the affinity YAML (default `LIG`) | Use a non-CCD id; a 3-letter CCD code (e.g. `TYR`) makes tt-bio expect CCD atom names and fail on a SMILES ligand. |
+| `--nesso1-affinity-key` | `affinity_probability_binary` (default, P(binder), higher better) or `affinity_pred_value` (lower = stronger) |
+| `--nesso1-launcher` / `--nesso1-extra-args` | launcher path / pass-through to `tt-bio affinity` |
+
+Each affinity call is ~20-30 s on a p150a (no fold), cheaper than a Boltz-2 affinity fold.

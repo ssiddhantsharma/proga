@@ -1,0 +1,24 @@
+# proga on Tenstorrent: protein -> ligand design with the Nesso-1 affinity oracle.
+#
+# Design a protein (the binder) to bind a fixed small-molecule ligand, scored by Nesso-1's
+# fold-free affinity on a Tenstorrent card. The ligand is passed on the CLI, not the spec:
+#
+#   proga --spec specs/example_nesso1_ligand.yaml --output_dir ./out \
+#         --oracle-backend nesso1 --objective affinity \
+#         --nesso1-ligand-smiles "N[C@@H](Cc1ccc(O)cc1)C(=O)O" --nesso1-ligand-id LIG \
+#         --population 16 --generations 10
+#
+# Default scored key is affinity_probability_binary (P(binder), higher is better); switch to
+# affinity_pred_value with --nesso1-affinity-key. See docs/tenstorrent.md.
+name: nesso1_ligand
+binder:
+    id: A
+    scaffold: null
+    denovo_length: 80          # de novo 80-mer protein binder
+    mask_char: X
+    alphabet: ADEFGHIKLMNPQRSTVWY
+    name: binder
+chains: []                     # no protein target; the target is the CLI ligand
+off_targets: []
+msa_chain_ids: []
+discriminating_positions: []

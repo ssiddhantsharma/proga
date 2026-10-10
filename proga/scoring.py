@@ -389,38 +389,50 @@ class Scorer:
     def score_terms(
         self, outputs: PredictionOutputs, ddg_pred: float | None = None
     ) -> dict[str, float]:
-        """Compute every term. ``ddg_pred`` (raw) is included only if given."""
-        terms = {
-            "iptm": self.term_iptm(outputs),
-            "iptm_global": self.term_iptm_global(outputs),
-            "plddt": self.term_plddt(outputs),
-            "i_plddt": self.term_i_plddt(outputs),
-            "i_pae": self.term_i_pae(outputs),
-            "pae_intra": self.term_pae_intra(outputs),
-            "rg": self.term_rg(outputs),
-            "mpnn": self.term_mpnn(outputs),
-            "target_aligned_binder_rmsd": self.term_target_aligned_binder_rmsd(outputs),
-        }
-        # distogram/contact terms need distogram_logits, which some backends do not emit.
-        # Compute them only when available; otherwise 0, and warn if any is actually
-        # weighted (surface the disabled objective, never silently drop it).
+        """Compute every term. ``ddg_pred`` (raw) is included only if given. A fold-free oracle
+        (empty ``ca_coords``, e.g. Nesso-1) scores on ``affinity`` alone; the structure terms are
+        set to 0 rather than indexing empty tensors."""
+        structure_terms = (
+            "iptm", "iptm_global", "plddt", "i_plddt", "i_pae", "pae_intra", "rg", "mpnn",
+            "target_aligned_binder_rmsd",
+        )
         contact_terms = ("con_intra", "paratope", "target_contact", "peptide_contact", "repulsion")
-        if outputs.distogram_logits is not None:
-            terms["con_intra"] = self.term_con_intra(outputs)
-            terms["paratope"] = self.term_paratope(outputs)
-            terms["target_contact"] = self.term_target_contact(outputs)
-            terms["peptide_contact"] = self.term_peptide_contact(outputs)
-            terms["repulsion"] = self.term_repulsion(outputs)
+        has_structure = outputs.ca_coords is not None and outputs.ca_coords.numel() > 0
+        if has_structure:
+            terms = {
+                "iptm": self.term_iptm(outputs),
+                "iptm_global": self.term_iptm_global(outputs),
+                "plddt": self.term_plddt(outputs),
+                "i_plddt": self.term_i_plddt(outputs),
+                "i_pae": self.term_i_pae(outputs),
+                "pae_intra": self.term_pae_intra(outputs),
+                "rg": self.term_rg(outputs),
+                "mpnn": self.term_mpnn(outputs),
+                "target_aligned_binder_rmsd": self.term_target_aligned_binder_rmsd(outputs),
+            }
+            # distogram/contact terms need distogram_logits, which some backends do not emit.
+            # Compute them only when available; otherwise 0, and warn if any is actually
+            # weighted (surface the disabled objective, never silently drop it).
+            if outputs.distogram_logits is not None:
+                terms["con_intra"] = self.term_con_intra(outputs)
+                terms["paratope"] = self.term_paratope(outputs)
+                terms["target_contact"] = self.term_target_contact(outputs)
+                terms["peptide_contact"] = self.term_peptide_contact(outputs)
+                terms["repulsion"] = self.term_repulsion(outputs)
+            else:
+                w = self.config.weights
+                weighted = [t for t in contact_terms if getattr(w, t, 0)]
+                if weighted:
+                    warnings.warn(
+                        f"distogram_logits unavailable from this oracle: contact terms {weighted} "
+                        "are weighted but will be 0 — drop them from the objective for this "
+                        "backend.", stacklevel=2
+                    )
+                terms.update({t: 0.0 for t in contact_terms})
         else:
-            w = self.config.weights
-            weighted = [t for t in contact_terms if getattr(w, t, 0)]
-            if weighted:
-                warnings.warn(
-                    f"distogram_logits unavailable from this oracle: contact terms {weighted} are "
-                    f"weighted but will be 0 — drop them from the objective for this backend.", stacklevel=2
-                )
-            terms.update({t: 0.0 for t in contact_terms})
-        terms.update(self.interface_pae_stats(outputs))
+            terms = {t: 0.0 for t in (*structure_terms, *contact_terms)}
+        terms.update(self.interface_pae_stats(outputs))  # self-guards empty chains -> zeros
+        terms["affinity"] = float(outputs.affinity) if outputs.affinity is not None else 0.0
         if ddg_pred is not None:
             terms["ddg"] = self.sigmoid_ddg(ddg_pred)
         return terms
