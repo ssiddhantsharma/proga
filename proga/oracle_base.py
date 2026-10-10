@@ -181,6 +181,7 @@ _ORACLE_BACKENDS: dict[str, str] = {
     "protenix": "proga.oracle:ProtenixOracle",      # Protenix-v2, GPU, in-process torch
     "boltz2": "proga.boltz_oracle:BoltzOracle",     # Boltz-2, subprocess `boltz predict` (forward-only)
     "opendde": "proga.opendde_oracle:OpenDDEOracle",# OpenDDE, GPU, in-process (shared Protenix runner)
+    "ttbio": "proga.ttbio_oracle:TTBioOracle",   # tt-bio (Tenstorrent) subprocess `tt-bio predict`
 }
 
 

@@ -172,6 +172,10 @@ class DesignConfig:
     n_cycle: int = 10
     n_step: int = 200
     oracle_backend: str = "protenix"   # registered oracle (see proga.oracle_base); add more via register_oracle
+    # tt-bio (Tenstorrent) oracle knobs (oracle_backend="ttbio"):
+    ttbio_model: str = "boltz2"   # boltz2|protenix-v2|opendde-abag|rf3|af2ig
+    ttbio_launcher: str = ""      # launcher path; "" -> $TTBIO or /home/bizon/ttbio
+    ttbio_extra_args: list[str] = field(default_factory=list)  # extra `tt-bio predict` flags
     n_sample: int = 1
     dtype: str = "bf16"
     use_msa: bool = True # Only for the target

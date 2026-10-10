@@ -83,6 +83,13 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--seed", type=int, default=DesignConfig.seed)
     p.add_argument("--oracle-backend", default=DesignConfig.oracle_backend,
                    help="registered fold oracle (see proga.oracle_base); default: protenix (Protenix-v2, in-process)")
+    p.add_argument("--ttbio-model", default=DesignConfig.ttbio_model,
+                   help="tt-bio model when --oracle-backend ttbio "
+                        "(boltz2|protenix-v2|opendde-abag|rf3)")
+    p.add_argument("--ttbio-launcher", default=DesignConfig.ttbio_launcher,
+                   help="tt-bio launcher path; empty uses $TTBIO or /home/bizon/ttbio")
+    p.add_argument("--ttbio-extra-args", nargs="*", default=None,
+                   help="extra flags passed through to tt-bio predict")
     p.add_argument(
         "--objective",
         choices=[
@@ -165,6 +172,9 @@ def _build_config(args: argparse.Namespace) -> DesignConfig:
         n_cycle=args.n_cycle,
         n_step=args.n_step,
         oracle_backend=args.oracle_backend,
+        ttbio_model=args.ttbio_model,
+        ttbio_launcher=args.ttbio_launcher,
+        ttbio_extra_args=list(args.ttbio_extra_args or []),
         n_sample=args.n_sample,
         dtype=args.dtype,
         use_msa=args.use_msa,
