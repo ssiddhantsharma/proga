@@ -1,10 +1,7 @@
 from dataclasses import dataclass
-from typing import Optional
-
-from proga.config import NANOBODY_SCAFFOLD
-
 from typing import Final
 
+from proga.config import NANOBODY_SCAFFOLD
 
 NANOBODY_CHAIN_ID: Final[str] = "A"
 PEPTIDE_CHAIN_ID: Final[str] = "B"
@@ -54,7 +51,7 @@ def apply_sequence(mask: DesignMask, cdr_residues: str) -> str:
             f"Expected {len(mask.positions)} CDR residues, got {len(cdr_residues)}."
         )
     chars = list(mask.scaffold)
-    for pos, aa in zip(mask.positions, cdr_residues):
+    for pos, aa in zip(mask.positions, cdr_residues, strict=False):
         chars[pos] = aa
     return "".join(chars)
 
@@ -73,7 +70,7 @@ class PMHCTarget:
     mhc_seq: str
 
 
-def load_pmhc_from_cif(cif_path: str, name: Optional[str] = None) -> PMHCTarget:
+def load_pmhc_from_cif(cif_path: str, name: str | None = None) -> PMHCTarget:
     """Load peptide and MHC sequences from a pMHC mmCIF file.
 
     The shortest protein chain is treated as the peptide and the longest as the
@@ -116,7 +113,7 @@ def discriminating_indices(target_peptide: str, off_target_peptide: str) -> list
         )
     return [
         i
-        for i, (a, b) in enumerate(zip(target_peptide, off_target_peptide))
+        for i, (a, b) in enumerate(zip(target_peptide, off_target_peptide, strict=False))
         if a != b
     ]
 
@@ -124,7 +121,7 @@ def discriminating_indices(target_peptide: str, off_target_peptide: str) -> list
 def build_sample_dict_n(
     chains: list[tuple[str, str]],
     name: str = "design",
-    msa_by_seq: Optional[dict[str, dict]] = None,
+    msa_by_seq: dict[str, dict] | None = None,
 ) -> dict:
     """Build a Protenix inference input dict for an N-chain complex.
 
@@ -156,7 +153,7 @@ def build_sample_dict(
     peptide_seq: str,
     mhc_seq: str,
     name: str = "design",
-    msa_by_seq: Optional[dict[str, dict]] = None,
+    msa_by_seq: dict[str, dict] | None = None,
 ) -> dict:
     """Build a Protenix inference input dict for the 3-chain pMHC design complex.
 

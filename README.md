@@ -9,7 +9,7 @@ Any structure predictor plugs in behind the `Oracle` protocol in `proga/oracle_b
 register it with `register_oracle("name", "module:Class")`. The scorer degrades gracefully
 when a backend omits an output (e.g. no distogram → contact terms are skipped, not faked).
 
-Oracles: **Protenix-v2** (`protenix`, in-process, default), **Boltz-2**, **OpenDDE**.
+Oracles: **Protenix-v2** (`protenix`, in-process, default), **Boltz-2**, **OpenDDE**, **tt-bio (Tenstorrent)** (`ttbio`, folds on a Tenstorrent card via `tt-bio predict`; see [docs/tenstorrent.md](docs/tenstorrent.md)).
 
 ## Install
 

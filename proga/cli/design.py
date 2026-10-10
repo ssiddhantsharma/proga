@@ -83,6 +83,25 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--seed", type=int, default=DesignConfig.seed)
     p.add_argument("--oracle-backend", default=DesignConfig.oracle_backend,
                    help="registered fold oracle (see proga.oracle_base); default: protenix (Protenix-v2, in-process)")
+    p.add_argument("--ttbio-model", default=DesignConfig.ttbio_model,
+                   help="tt-bio model when --oracle-backend ttbio "
+                        "(boltz2|protenix-v2|opendde-abag|rf3)")
+    p.add_argument("--ttbio-launcher", default=DesignConfig.ttbio_launcher,
+                   help="tt-bio launcher path; empty uses $TTBIO or /home/bizon/ttbio")
+    p.add_argument("--ttbio-extra-args", nargs="*", default=None,
+                   help="extra flags passed through to tt-bio predict")
+    p.add_argument("--nesso1-ligand-smiles", default=DesignConfig.nesso1_ligand_smiles,
+                   help="ligand SMILES for the nesso1 protein-ligand affinity oracle")
+    p.add_argument("--nesso1-ligand-ccd", default=DesignConfig.nesso1_ligand_ccd,
+                   help="ligand CCD code (alternative to --nesso1-ligand-smiles)")
+    p.add_argument("--nesso1-ligand-id", default=DesignConfig.nesso1_ligand_id)
+    p.add_argument("--nesso1-affinity-key", default=DesignConfig.nesso1_affinity_key,
+                   help="results key to score "
+                        "(affinity_probability_binary | affinity_pred_value)")
+    p.add_argument("--nesso1-launcher", default=DesignConfig.nesso1_launcher,
+                   help="tt-bio launcher path; empty uses $TTBIO or tt-bio")
+    p.add_argument("--nesso1-extra-args", nargs="*", default=None,
+                   help="extra flags passed through to tt-bio affinity")
     p.add_argument(
         "--objective",
         choices=[
@@ -94,7 +113,8 @@ def parse_args() -> argparse.Namespace:
             "iptm_ipae_paratope",
             "iptm_ipae_tabs",
             "iptm_ipae_target_peptide",
-            "iptm_ipae_target_peptide_mpnn"
+            "iptm_ipae_target_peptide_mpnn",
+            "affinity"
         ],
         default="composite",
         help="'composite' = full Table-1 fitness (paper); 'iptm_ipae' = select "
@@ -165,6 +185,15 @@ def _build_config(args: argparse.Namespace) -> DesignConfig:
         n_cycle=args.n_cycle,
         n_step=args.n_step,
         oracle_backend=args.oracle_backend,
+        ttbio_model=args.ttbio_model,
+        ttbio_launcher=args.ttbio_launcher,
+        ttbio_extra_args=list(args.ttbio_extra_args or []),
+        nesso1_ligand_smiles=args.nesso1_ligand_smiles,
+        nesso1_ligand_ccd=args.nesso1_ligand_ccd,
+        nesso1_ligand_id=args.nesso1_ligand_id,
+        nesso1_affinity_key=args.nesso1_affinity_key,
+        nesso1_launcher=args.nesso1_launcher,
+        nesso1_extra_args=list(args.nesso1_extra_args or []),
         n_sample=args.n_sample,
         dtype=args.dtype,
         use_msa=args.use_msa,
@@ -190,6 +219,8 @@ def _build_config(args: argparse.Namespace) -> DesignConfig:
         config.weights = ScoreWeights.iptm_ipae_target_peptide()
     elif args.objective == "iptm_ipae_target_peptide_mpnn":
         config.weights = ScoreWeights.iptm_ipae_target_peptide_mpnn()
+    elif args.objective == "affinity":
+        config.weights = ScoreWeights.affinity_only()
     return config
 
 

@@ -30,7 +30,6 @@ applied in ``scoring.py``, not here.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Optional
 
 
 class DDGPredictor(ABC):
@@ -65,6 +64,6 @@ class DisabledDDG(DDGPredictor):
         return 0.0
 
 
-def default_ddg_predictor(predictor: Optional[DDGPredictor] = None) -> DDGPredictor:
+def default_ddg_predictor(predictor: DDGPredictor | None = None) -> DDGPredictor:
     """Return ``predictor`` if given, else the disabled default."""
     return predictor if predictor is not None else DisabledDDG()

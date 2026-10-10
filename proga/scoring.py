@@ -2,7 +2,11 @@ import math
 import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+
+# NB: `compute_contact_prob` (protenix) is imported lazily inside `_contact_prob` so scoring.py
+# imports on a protenix-free box; contact terms are only reached when a backend supplies
+# distogram_logits.
+from typing import Final
 
 import gemmi
 import torch
@@ -12,11 +16,6 @@ from proga import rmsd
 from proga.config import DesignConfig
 from proga.oracle_base import PredictionOutputs
 from proga.spec import ROLE_TARGET, TargetSpec
-# NB: `compute_contact_prob` (protenix) is imported lazily inside `_contact_prob` so scoring.py
-# imports on a protenix-free box; contact terms are only reached when a backend supplies
-# distogram_logits.
-
-from typing import Final
 
 _EPS: Final[float] = 1e-8
 
@@ -55,7 +54,7 @@ class _TabsRef:
     binder_pred_idx: list[int]
 
 
-def build_tabs_ref(spec: TargetSpec, weight: float) -> Optional[_TabsRef]:
+def build_tabs_ref(spec: TargetSpec, weight: float) -> _TabsRef | None:
     """Load + align the reference once, or None when the term is unweighted.
 
     Raises ``ValueError`` with an actionable message when the term is weighted
@@ -85,7 +84,7 @@ def build_tabs_ref(spec: TargetSpec, weight: float) -> Optional[_TabsRef]:
         target_ca: rmsd.Positions = []
         target_pred_idx: list[int] = []
         offset = 0
-        for dchain, rchain in zip(design_targets, ref.target_chains):
+        for dchain, rchain in zip(design_targets, ref.target_chains, strict=False):
             rseq, rca = rmsd.load_chain_ca(ref.path, rchain)
             pred_idx, ref_idx = rmsd.matched_columns(dchain.sequence, rseq)
             target_pred_idx += [offset + i for i in pred_idx]
@@ -120,9 +119,9 @@ class Scorer:
     discriminating_positions: list[int] = field(default_factory=list)
     contact_residues: dict[str, list[int]] = field(default_factory=dict)
     avoidance_residues: dict[str, list[int]] = field(default_factory=dict)
-    iptm_target_id: Optional[str] = None
-    mpnn_model: Optional[object] = None
-    tabs: Optional[_TabsRef] = None
+    iptm_target_id: str | None = None
+    mpnn_model: object | None = None
+    tabs: _TabsRef | None = None
 
     def _iptm_target_asym(self, outputs: PredictionOutputs) -> int:
         """Resolve which chain's ipTM-vs-binder is reported by ``term_iptm``."""
@@ -293,7 +292,7 @@ class Scorer:
             return 0.0
         contact = self._contact_prob(outputs, self.config.contact_cutoff)
         sub = contact[m_tokens][:, d]  # [|M|, |D|]
-        logp = _neg_log((1.0 - sub))  # -log(1 - P(contact))
+        logp = _neg_log(1.0 - sub)  # -log(1 - P(contact))
         per_m = torch.stack([max_k(logp[r], self.config.k_repulsion) for r in range(logp.shape[0])])
         return float(per_m.mean())
 
@@ -388,40 +387,52 @@ class Scorer:
         return float(F.elu(torch.tensor(value - self.config.tabs_tol)))
 
     def score_terms(
-        self, outputs: PredictionOutputs, ddg_pred: Optional[float] = None
+        self, outputs: PredictionOutputs, ddg_pred: float | None = None
     ) -> dict[str, float]:
-        """Compute every term. ``ddg_pred`` (raw) is included only if given."""
-        terms = {
-            "iptm": self.term_iptm(outputs),
-            "iptm_global": self.term_iptm_global(outputs),
-            "plddt": self.term_plddt(outputs),
-            "i_plddt": self.term_i_plddt(outputs),
-            "i_pae": self.term_i_pae(outputs),
-            "pae_intra": self.term_pae_intra(outputs),
-            "rg": self.term_rg(outputs),
-            "mpnn": self.term_mpnn(outputs),
-            "target_aligned_binder_rmsd": self.term_target_aligned_binder_rmsd(outputs),
-        }
-        # distogram/contact terms need distogram_logits, which some backends do not emit.
-        # Compute them only when available; otherwise 0, and warn if any is actually
-        # weighted (surface the disabled objective, never silently drop it).
+        """Compute every term. ``ddg_pred`` (raw) is included only if given. A fold-free oracle
+        (empty ``ca_coords``, e.g. Nesso-1) scores on ``affinity`` alone; the structure terms are
+        set to 0 rather than indexing empty tensors."""
+        structure_terms = (
+            "iptm", "iptm_global", "plddt", "i_plddt", "i_pae", "pae_intra", "rg", "mpnn",
+            "target_aligned_binder_rmsd",
+        )
         contact_terms = ("con_intra", "paratope", "target_contact", "peptide_contact", "repulsion")
-        if outputs.distogram_logits is not None:
-            terms["con_intra"] = self.term_con_intra(outputs)
-            terms["paratope"] = self.term_paratope(outputs)
-            terms["target_contact"] = self.term_target_contact(outputs)
-            terms["peptide_contact"] = self.term_peptide_contact(outputs)
-            terms["repulsion"] = self.term_repulsion(outputs)
+        has_structure = outputs.ca_coords is not None and outputs.ca_coords.numel() > 0
+        if has_structure:
+            terms = {
+                "iptm": self.term_iptm(outputs),
+                "iptm_global": self.term_iptm_global(outputs),
+                "plddt": self.term_plddt(outputs),
+                "i_plddt": self.term_i_plddt(outputs),
+                "i_pae": self.term_i_pae(outputs),
+                "pae_intra": self.term_pae_intra(outputs),
+                "rg": self.term_rg(outputs),
+                "mpnn": self.term_mpnn(outputs),
+                "target_aligned_binder_rmsd": self.term_target_aligned_binder_rmsd(outputs),
+            }
+            # distogram/contact terms need distogram_logits, which some backends do not emit.
+            # Compute them only when available; otherwise 0, and warn if any is actually
+            # weighted (surface the disabled objective, never silently drop it).
+            if outputs.distogram_logits is not None:
+                terms["con_intra"] = self.term_con_intra(outputs)
+                terms["paratope"] = self.term_paratope(outputs)
+                terms["target_contact"] = self.term_target_contact(outputs)
+                terms["peptide_contact"] = self.term_peptide_contact(outputs)
+                terms["repulsion"] = self.term_repulsion(outputs)
+            else:
+                w = self.config.weights
+                weighted = [t for t in contact_terms if getattr(w, t, 0)]
+                if weighted:
+                    warnings.warn(
+                        f"distogram_logits unavailable from this oracle: contact terms {weighted} "
+                        "are weighted but will be 0 — drop them from the objective for this "
+                        "backend.", stacklevel=2
+                    )
+                terms.update({t: 0.0 for t in contact_terms})
         else:
-            w = self.config.weights
-            weighted = [t for t in contact_terms if getattr(w, t, 0)]
-            if weighted:
-                warnings.warn(
-                    f"distogram_logits unavailable from this oracle: contact terms {weighted} are "
-                    f"weighted but will be 0 — drop them from the objective for this backend."
-                )
-            terms.update({t: 0.0 for t in contact_terms})
-        terms.update(self.interface_pae_stats(outputs))
+            terms = {t: 0.0 for t in (*structure_terms, *contact_terms)}
+        terms.update(self.interface_pae_stats(outputs))  # self-guards empty chains -> zeros
+        terms["affinity"] = float(outputs.affinity) if outputs.affinity is not None else 0.0
         if ddg_pred is not None:
             terms["ddg"] = self.sigmoid_ddg(ddg_pred)
         return terms

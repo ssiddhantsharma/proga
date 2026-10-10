@@ -1,0 +1,42 @@
+# proga on Tenstorrent: selectivity-aware binder design via the tt-bio oracle.
+#
+# A general (non-pMHC) on/off template: design a binder to an on-target antigen while
+# penalising binding to a close homolog listed under `off_targets`. Every fold runs on a
+# Tenstorrent card through `tt-bio predict` (oracle_backend=ttbio). Fill the two sequences
+# with PUBLIC targets of your choice (e.g. a UniProt ectodomain and its paralog), then:
+#
+#   proga --spec specs/example_ttbio_selectivity.yaml --output_dir ./out \
+#         --oracle-backend ttbio --ttbio-model boltz2 \
+#         --selection pareto --pareto_objectives iptm_global mean_ipae \
+#         --use_msa --ttbio-extra-args --msa_dir ~/.cache/ttbio_msa --msa_cache_only
+#
+# NSGA-II keeps the on-target vs off-target trade-off instead of collapsing it to one weight.
+# For a complete, runnable on/off spec today see specs/example_kras_g12d.yaml (a pMHC
+# G12D-vs-WT example); run it with the same --oracle-backend ttbio flags. See docs/tenstorrent.md.
+name: ttbio_selectivity
+binder:
+    id: A
+    scaffold: null
+    denovo_length: 80          # de novo 80-mer binder; or set `scaffold:` with `mask_char: X`
+    mask_char: X
+    alphabet: ADEFGHIKLMNPQRSTVWY
+    name: binder
+chains:
+    - id: B
+      sequence: REPLACE_WITH_ON_TARGET_SEQUENCE
+      role: target
+      name: antigen
+      contact_residues: []     # optional 1-based epitope residues to steer the binder toward
+      avoidance_residues: []
+off_targets:
+    - name: off_target
+      chains:
+          - id: B
+            sequence: REPLACE_WITH_OFF_TARGET_HOMOLOG_SEQUENCE
+            role: target
+            name: antigen
+            contact_residues: []
+            avoidance_residues: []
+      aligned_to: { B: B }
+msa_chain_ids: [B]             # compute + cache the target MSA once; the binder stays single-seq
+discriminating_positions: []
