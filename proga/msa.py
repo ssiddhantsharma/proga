@@ -3,7 +3,11 @@ import os
 import shutil
 
 from protenix.utils.logger import get_logger
-from runner.msa_search import msa_search
+
+try:
+    from runner.msa_search import msa_search  # protenix <= c3bfc36
+except ModuleNotFoundError:  # newer protenix
+    from protenix.runner.msa_search import msa_search
 
 logger = get_logger(__name__)
 

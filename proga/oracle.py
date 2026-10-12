@@ -4,10 +4,18 @@ import tempfile
 
 import numpy as np
 import torch
-from protenix.data.inference.infer_dataloader import InferenceDataset
+
+try:
+    from protenix.data.inference.infer_dataloader import InferenceDataset  # protenix <= c3bfc36
+except ModuleNotFoundError:  # newer protenix
+    from protenix.data.infer_data_pipeline import InferenceDataset
 from protenix.model import sample_confidence
 from protenix.utils.logger import get_logger
-from runner.batch_inference import get_default_runner
+
+try:
+    from runner.batch_inference import get_default_runner  # protenix <= c3bfc36
+except ModuleNotFoundError:  # newer protenix
+    from protenix.runner.batch_inference import get_default_runner
 
 from proga.complex import (
     MHC_CHAIN_ID,
@@ -139,7 +147,10 @@ class ProtenixOracle:
         Left ``None`` during the GA (structures discarded); set only when saving
         the final designs, since it adds CIF-writing I/O per call.
         """
-        from runner.inference import update_inference_configs
+        try:
+            from runner.inference import update_inference_configs
+        except ModuleNotFoundError:
+            from protenix.runner.inference import update_inference_configs
 
         sample_dict = build_sample_dict_n(chains, name=name, msa_by_seq=self.target_msa)
         data, atom_array, _ = self.dataset.process_one(sample_dict)
