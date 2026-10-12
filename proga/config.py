@@ -179,6 +179,7 @@ class DesignConfig:
     n_cycle: int = 10
     n_step: int = 200
     oracle_backend: str = "protenix"   # registered oracle (see proga.oracle_base); add more via register_oracle
+    boltz_accelerator: str = "gpu"  # boltz2 oracle: gpu|cpu
     # tt-bio (Tenstorrent) oracle knobs (oracle_backend="ttbio"):
     ttbio_model: str = "boltz2"   # boltz2|protenix-v2|opendde-abag|rf3|af2ig
     ttbio_launcher: str = ""      # launcher path; "" -> $TTBIO or /home/bizon/ttbio
