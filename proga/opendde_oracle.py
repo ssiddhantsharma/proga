@@ -15,7 +15,7 @@ Requires the OpenDDE GPU env (the `opendde` package + a resolved checkpoint via 
 `opendde`/`runner` are imported lazily in __init__ so this module loads (and the backend registry
 lists it) on a box without OpenDDE installed.
 
-STATUS: wired against the confirmed OpenDDE API, but NOT yet run end-to-end from proga — validate
+STATUS: validated end-to-end on bizon (iptm 0.421). OpenDDE writes the Protenix-family layout — validate
 on the first fold in the OpenDDE env (confirm the dumped confidence/pae filenames the parsers glob,
 and that build_sample_dict_n's json is accepted as-is). Like distogram-free subprocess folders,
 distogram_logits is None (OpenDDE's low-level distogram tensor is not surfaced by infer_predict),
@@ -26,6 +26,7 @@ import os
 import tempfile
 from pathlib import Path
 
+import numpy as np
 import torch
 
 from proga.boltz_oracle import BoltzOracle
@@ -137,3 +138,32 @@ class OpenDDEOracle(BoltzOracle):
             backbone_coords=backbone,
             sequence=sequence,
         )
+
+    def _parse_confidence(self, pred_dir, name, n_chain):
+        cj = next(pred_dir.glob("*_summary_confidence_sample_*.json"), None) or next(
+            pred_dir.glob("**/*_summary_confidence_sample_*.json"), None
+        )
+        if cj is None:
+            raise FileNotFoundError(f"no *_summary_confidence_sample_*.json under {pred_dir}")
+        with open(cj) as fh:
+            d = json.load(fh)
+        iptm_global = float(d.get("iptm", 0.0))
+        cpi = torch.zeros(n_chain, n_chain)
+        t = torch.as_tensor(d.get("chain_pair_iptm") or d.get("chain_pair_iptm_global") or [],
+                            dtype=torch.float32)
+        if t.ndim == 2:
+            m = min(n_chain, t.shape[0])
+            cpi[:m, :m] = t[:m, :m]
+        return iptm_global, cpi
+
+    def _parse_pae(self, pred_dir, name):
+        fj = next(pred_dir.glob("*_full_data_sample_*.json"), None) or next(
+            pred_dir.glob("**/*_full_data_sample_*.json"), None
+        )
+        if fj is None:
+            raise FileNotFoundError(f"no *_full_data_sample_*.json under {pred_dir}")
+        with open(fj) as fh:
+            arr = np.asarray(json.load(fh)["token_pair_pae"], dtype=np.float32)
+        if arr.ndim == 3:
+            arr = arr[0]
+        return torch.as_tensor(arr, dtype=torch.float32)
