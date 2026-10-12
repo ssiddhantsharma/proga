@@ -109,7 +109,16 @@ class TTBioOracle(BoltzOracle):
         if p is None:
             raise FileNotFoundError(f"no *_pae.npz under {pred_dir} (pass --write_pae)")
         z = np.load(p)
-        arr = z["pae"] if "pae" in getattr(z, "files", []) else np.asarray(z)
+        if "pae" not in getattr(z, "files", []):
+            # tt-bio ships a <name>_pae.json sidecar saying why an array is absent; surface
+            # that reason rather than returning a bogus array for a model that cannot write pae.
+            reason = ""
+            sidecar = p.with_suffix(".json")
+            if sidecar.exists():
+                with open(sidecar) as fh:
+                    reason = (json.load(fh).get("absent") or {}).get("pae", "")
+            raise KeyError(f"'pae' absent from {p.name}{f': {reason}' if reason else ''}")
+        arr = z["pae"]
         if arr.ndim == 3:
             arr = arr[0]
         return torch.as_tensor(arr, dtype=torch.float32)
