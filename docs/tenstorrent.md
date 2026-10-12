@@ -53,7 +53,7 @@ single-sequence (`--single_sequence`). Otherwise every candidate pays an MSA sea
 ## Protein -> ligand design (Nesso-1 affinity)
 
 `oracle_backend=nesso1` scores the GA-designed protein against a fixed small-molecule ligand with
-`tt-bio affinity --model nesso1` — a scalar, no fold (Nesso-1 is protein-ligand only). It is the one
+`tt-bio affinity --model nesso1`: a scalar, no fold (Nesso-1 is protein-ligand only). It is the one
 case where the oracle returns no structure: the scorer runs on `affinity` alone (its has-structure
 guard zeroes the structure terms). Pair it with `--objective affinity`.
 
