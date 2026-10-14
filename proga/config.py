@@ -21,6 +21,9 @@ NANOBODY_SCAFFOLD: Final[str] = (
 class ScoreWeights:
     iptm: float = 0.7
     iptm_global: float = 0.0
+    # ipSAE (Dunbar d0res) between binder and target: the interface metric that separates true
+    # de-novo binders best. Inert by default (0.0); the `iptm_ipsae` objective turns it on.
+    ipsae: float = 0.0
     plddt: float = -1.0
     i_plddt: float = -1.0
     i_pae: float = -0.5
@@ -58,6 +61,16 @@ class ScoreWeights:
     def iptm_ipae(cls, target_contact: float = -0.5) -> Self:
         kwargs = {f.name: 0.0 for f in fields(cls)}
         kwargs["iptm_global"] = 1.0
+        kwargs["mean_ipae"] = -1.0 / 31.0
+        kwargs["target_contact"] = target_contact
+        return cls(**kwargs)
+
+    @classmethod
+    def iptm_ipsae(cls, ipsae: float = 1.0, target_contact: float = -0.5) -> Self:
+        """Rank primarily on ipSAE (Dunbar d0res), with the usual ipae penalty and target-contact
+        steer. ipSAE separates true de-novo binders better than ipTM alone."""
+        kwargs = {f.name: 0.0 for f in fields(cls)}
+        kwargs["ipsae"] = ipsae
         kwargs["mean_ipae"] = -1.0 / 31.0
         kwargs["target_contact"] = target_contact
         return cls(**kwargs)
@@ -153,6 +166,7 @@ class DesignConfig:
     contact_cutoff: float = 8.0
     intra_contact_cutoff: float = 14.0
     intra_seq_sep: int = 6
+    ipsae_pae_cutoff: float = 10.0  # PAE cutoff (A) for the ipSAE term (Dunbar default)
 
     k_target_contact: int = 2
     k_peptide_contact: int = 2

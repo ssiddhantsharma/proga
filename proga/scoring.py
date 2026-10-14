@@ -40,6 +40,38 @@ def _neg_log(p: torch.Tensor) -> torch.Tensor:
     return -torch.log(p.clamp_min(_EPS))
 
 
+def _ipsae_asym(
+    pae: torch.Tensor, a_tokens: torch.Tensor, b_tokens: torch.Tensor, pae_cutoff: float
+) -> torch.Tensor:
+    """ipSAE (Dunbar d0res) for the ordered chain pair a->b, from PAE + chain membership only.
+
+    For each residue i in ``a``, d0 comes from the count of residues in ``b`` whose interchain
+    PAE to i is below ``pae_cutoff`` (Yang-Skolnick, L floored at 26); the pTM transform
+    1/(1+(pae/d0)^2) is averaged over those partners, and the asymmetric value is the max over i.
+    """
+    if a_tokens.numel() == 0 or b_tokens.numel() == 0:
+        return pae.new_zeros(())
+    sub = pae[a_tokens][:, b_tokens]  # [|a|, |b|] PAE(i in a, j in b)
+    valid = sub < pae_cutoff
+    n0 = valid.sum(dim=1)  # interchain partners per residue i
+    length = n0.clamp(min=26).to(pae.dtype)
+    d0 = torch.clamp(1.24 * (length - 15.0) ** (1.0 / 3.0) - 1.8, min=1.0)
+    ptm = 1.0 / (1.0 + (sub / d0[:, None]) ** 2)
+    byres = (ptm * valid).sum(dim=1) / valid.sum(dim=1).clamp(min=1)  # 0 where i has no partners
+    return byres.max()
+
+
+def ipsae_d0res_max(
+    pae: torch.Tensor, binder_tokens: torch.Tensor, target_tokens: torch.Tensor,
+    pae_cutoff: float = 10.0,
+) -> torch.Tensor:
+    """Headline ipSAE: the max of the two asymmetric binder<->target directions."""
+    return torch.maximum(
+        _ipsae_asym(pae, binder_tokens, target_tokens, pae_cutoff),
+        _ipsae_asym(pae, target_tokens, binder_tokens, pae_cutoff),
+    )
+
+
 @dataclass
 class _TabsRef:
     """Resolved reference for the target-aligned binder RMSD term.
@@ -165,6 +197,16 @@ class Scorer:
 
     def term_iptm_global(self, outputs: PredictionOutputs) -> float:
         return float(outputs.iptm_global)
+
+    def term_ipsae(self, outputs: PredictionOutputs) -> float:
+        """ipSAE between the binder and the ipTM target chain (same chain term_iptm scores)."""
+        ci = outputs.chain_index
+        tgt_asym = self._iptm_target_asym(outputs)
+        tgt_id = next((c for c, k in ci.chain_asym.items() if k == tgt_asym), None)
+        if tgt_id is None:
+            return 0.0
+        cutoff = getattr(self.config, "ipsae_pae_cutoff", 10.0)
+        return float(ipsae_d0res_max(outputs.pae, ci.binder_tokens, ci.chain_tokens[tgt_id], cutoff))
 
     def interface_pae_stats(self, outputs: PredictionOutputs) -> dict[str, float]:
         ci = outputs.chain_index
@@ -393,7 +435,7 @@ class Scorer:
         (empty ``ca_coords``, e.g. Nesso-1) scores on ``affinity`` alone; the structure terms are
         set to 0 rather than indexing empty tensors."""
         structure_terms = (
-            "iptm", "iptm_global", "plddt", "i_plddt", "i_pae", "pae_intra", "rg", "mpnn",
+            "iptm", "iptm_global", "ipsae", "plddt", "i_plddt", "i_pae", "pae_intra", "rg", "mpnn",
             "target_aligned_binder_rmsd",
         )
         contact_terms = ("con_intra", "paratope", "target_contact", "peptide_contact", "repulsion")
@@ -402,6 +444,7 @@ class Scorer:
             terms = {
                 "iptm": self.term_iptm(outputs),
                 "iptm_global": self.term_iptm_global(outputs),
+                "ipsae": self.term_ipsae(outputs),
                 "plddt": self.term_plddt(outputs),
                 "i_plddt": self.term_i_plddt(outputs),
                 "i_pae": self.term_i_pae(outputs),

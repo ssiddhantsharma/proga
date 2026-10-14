@@ -17,7 +17,8 @@ through the chosen oracle, and keeps the best by weighted-sum fitness or by NSGA
 
 Pick one with `--oracle-backend`. Add your own with `register_oracle("name", "module:Class")`
 against the `Oracle` protocol in `proga/oracle_base.py`; the scorer drops any term an oracle cannot
-supply (no distogram, no contact terms) rather than faking it.
+supply (no distogram, no contact terms) rather than faking it. See
+[docs/extending.md](docs/extending.md) for the full oracle-authoring guide.
 
 NVIDIA GPU:
 * `protenix` (default): Protenix-v2 fold and metrics, in process.
@@ -70,7 +71,8 @@ Nesso-1 protein to ligand (Tenstorrent):
           --oracle-backend nesso1 --objective affinity \
           --nesso1-ligand-smiles "<SMILES>" --nesso1-ligand-id LIG
 
-`--objective` picks the score weights (`iptm_ipae`, `affinity`, and others); `--selection
+`--objective` picks the score weights (`iptm_ipae`, `iptm_ipsae`, `affinity`, and others);
+`--selection
 scalar|pareto` runs NSGA-II over `--pareto_objectives`. See
 [docs/tenstorrent.md](docs/tenstorrent.md) for the Tenstorrent flags, MSA caching, and ligand-id
 notes.

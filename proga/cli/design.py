@@ -107,6 +107,7 @@ def parse_args() -> argparse.Namespace:
         choices=[
             "composite",
             "iptm_ipae",
+            "iptm_ipsae",
             "mpnn",
             "iptm_ipae_mpnn",
             "iptm_ipae_repulsion",
@@ -205,6 +206,8 @@ def _build_config(args: argparse.Namespace) -> DesignConfig:
     )
     if args.objective == "iptm_ipae":
         config.weights = ScoreWeights.iptm_ipae()
+    elif args.objective == "iptm_ipsae":
+        config.weights = ScoreWeights.iptm_ipsae()
     elif args.objective == "mpnn":
         config.weights = ScoreWeights.mpnn_only()
     elif args.objective == "iptm_ipae_mpnn":

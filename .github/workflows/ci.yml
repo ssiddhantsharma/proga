@@ -12,6 +12,6 @@ jobs:
       - run: pip install numpy gemmi pyyaml pytest ruff
       - run: ruff check .
       - run: python -m compileall proga
-      # Card-free oracle tests. The full suite (tests/test_design.py scoring) needs the optional
-      # protenix GPU extra: `pip install -e .[protenix]` on a CUDA box.
-      - run: PYTHONPATH=. pytest tests/test_ttbio_oracle.py tests/test_nesso1_oracle.py -q
+      # Card-free tests: the oracle parsers and the core selection math (scoring). The rest of
+      # tests/test_design.py needs the optional protenix GPU extra (`pip install -e .[protenix]`).
+      - run: PYTHONPATH=. pytest tests/test_ttbio_oracle.py tests/test_nesso1_oracle.py tests/test_scoring.py -q
